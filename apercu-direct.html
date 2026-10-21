@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuiviVol — Suivi de vols en temps réel (Aperçu direct)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .bg-bleu-fonce { background-color: #1E3A5F; }
+    .text-bleu-fonce { color: #1E3A5F; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+  <!-- En-tête -->
+  <header class="bg-bleu-fonce text-white shadow-lg">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl" role="img" aria-label="avion">✈️</span>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">SuiviVol</h1>
+          <p class="text-blue-200 text-sm hidden sm:block">Suivez vos vols en temps réel</p>
+        </div>
+      </div>
+      <span class="text-xs bg-blue-700/60 text-blue-100 px-3 py-1 rounded-full border border-blue-400/30">
+        Aperçu direct HTML/Tailwind
+      </span>
+    </div>
+  </header>
+
+  <!-- Contenu principal -->
+  <main class="flex-1">
+    <!-- Section de recherche -->
+    <section class="bg-gradient-to-b from-bleu-fonce to-blue-800 text-white py-12 sm:py-16 px-4">
+      <div class="max-w-3xl mx-auto text-center">
+        <h2 class="text-2xl sm:text-4xl font-bold mb-3">
+          Suivez votre vol en temps réel
+        </h2>
+        <p class="text-blue-200 mb-8 text-sm sm:text-base">
+          Entrez un numéro de vol pour obtenir les dernières informations.
+        </p>
+
+        <!-- Formulaire de recherche -->
+        <form id="searchForm" class="w-full max-w-xl mx-auto">
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">✈️</span>
+              <input
+                type="text"
+                id="flightInput"
+                placeholder="Numéro de vol (ex : AF123)"
+                class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-gray-800 bg-white shadow-sm text-base transition-all"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              id="submitBtn"
+              class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span class="hidden sm:inline">Rechercher</span>
+            </button>
+          </div>
+          <div class="mt-4 flex flex-wrap justify-center items-center gap-2 text-xs sm:text-sm text-blue-200">
+            <span>Suggestions à tester :</span>
+            <button type="button" class="quick-chip bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full underline decoration-blue-300" data-code="AF123">AF123 (En vol)</button>
+            <button type="button" class="quick-chip bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full underline decoration-blue-300" data-code="LH456">LH456 (Atterri)</button>
+            <button type="button" class="quick-chip bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full underline decoration-blue-300" data-code="BA789">BA789 (Retardé)</button>
+            <button type="button" class="quick-chip bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full underline decoration-blue-300" data-code="EK999">EK999 (Annulé)</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Zone d'affichage des résultats -->
+    <section class="px-4 py-8 max-w-3xl mx-auto" id="resultsSection">
+      <!-- État initial -->
+      <div id="initialState" class="text-center py-16">
+        <span class="text-6xl block mb-4">🛫</span>
+        <p class="text-gray-400 text-lg">Entrez un numéro de vol ci-dessus pour afficher son suivi</p>
+      </div>
+
+      <!-- État de chargement -->
+      <div id="loadingState" class="hidden flex-col items-center justify-center py-16 gap-4">
+        <div class="relative">
+          <div class="w-12 h-12 border-4 border-blue-200 rounded-full animate-spin border-t-blue-600"></div>
+          <span class="absolute inset-0 flex items-center justify-center text-lg">✈️</span>
+        </div>
+        <p class="text-gray-500 font-medium animate-pulse">Recherche du vol en cours…</p>
+      </div>
+
+      <!-- Message d'erreur -->
+      <div id="errorState" class="hidden max-w-xl mx-auto mt-4 p-5 bg-red-50 border border-red-200 rounded-xl text-center">
+        <span class="text-3xl block mb-2">😕</span>
+        <p id="errorMessage" class="text-red-700 font-medium">Vol introuvable.</p>
+        <p class="text-red-400 text-sm mt-1">Vérifiez le numéro et réessayez (ex. : AF123, LH456, BA789, EK999, VY321).</p>
+      </div>
+
+      <!-- Carte du vol -->
+      <div id="flightCard" class="hidden max-w-xl mx-auto mt-4 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all">
+        <!-- En-tête de la carte -->
+        <div class="bg-bleu-fonce text-white px-6 py-4 flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">✈️</span>
+            <div>
+              <p id="cardAirline" class="font-bold text-lg">Air France</p>
+              <p id="cardFlightNumber" class="text-blue-200 text-sm">Vol AF123</p>
+            </div>
+          </div>
+          <span id="cardStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-700">
+            <span>🛫</span> En vol
+          </span>
+        </div>
+
+        <!-- Trajet -->
+        <div class="px-6 py-6">
+          <div class="flex items-center justify-between gap-4">
+            <!-- Départ -->
+            <div class="text-center flex-1">
+              <p id="cardDepIata" class="text-3xl font-bold text-bleu-fonce">CDG</p>
+              <p id="cardDepCity" class="text-gray-500 text-sm mt-1">Paris</p>
+            </div>
+
+            <!-- Flèche & Avion -->
+            <div class="flex flex-col items-center flex-shrink-0 px-2">
+              <div class="w-24 sm:w-32 h-px bg-gray-300 relative">
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-blue-500 text-lg">✈️</span>
+              </div>
+            </div>
+
+            <!-- Arrivée -->
+            <div class="text-center flex-1">
+              <p id="cardArrIata" class="text-3xl font-bold text-bleu-fonce">JFK</p>
+              <p id="cardArrCity" class="text-gray-500 text-sm mt-1">New York</p>
+            </div>
+          </div>
+
+          <!-- Horaires -->
+          <div class="mt-6 grid grid-cols-2 gap-4">
+            <div class="bg-blue-50 rounded-xl p-4">
+              <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Départ</p>
+              <p class="text-sm text-gray-600">
+                Prévu : <span id="cardDepScheduled" class="font-semibold text-gray-800">14:30</span>
+              </p>
+              <p class="text-sm text-gray-600">
+                Réel : <span id="cardDepActual" class="font-semibold text-blue-600">14:45</span>
+              </p>
+              <p id="cardDepAirport" class="text-xs text-gray-400 mt-1 truncate" title="Aéroport Charles de Gaulle">Aéroport Charles de Gaulle</p>
+            </div>
+
+            <div class="bg-blue-50 rounded-xl p-4">
+              <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Arrivée</p>
+              <p class="text-sm text-gray-600">
+                Prévue : <span id="cardArrScheduled" class="font-semibold text-gray-800">17:00</span>
+              </p>
+              <p class="text-sm text-gray-600">
+                Réelle : <span id="cardArrActual" class="font-semibold text-green-600">—</span>
+              </p>
+              <p id="cardArrAirport" class="text-xs text-gray-400 mt-1 truncate" title="John F. Kennedy">John F. Kennedy International</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Pied de page -->
+  <footer class="bg-white border-t border-gray-200 py-4 text-center text-sm text-gray-400">
+    © 2026 SuiviVol · Aperçu direct prêt à l'emploi
+  </footer>
+
+  <script>
+    // Données de test
+    const mockFlights = {
+      'AF123': {
+        flightNumber: 'AF123',
+        airline: 'Air France',
+        status: 'active',
+        statusText: 'En vol',
+        statusIcon: '🛫',
+        statusClass: 'bg-blue-100 text-blue-700',
+        departure: { airport: 'Aéroport Charles de Gaulle', iata: 'CDG', city: 'Paris', scheduled: '14:30', actual: '14:45' },
+        arrival: { airport: 'John F. Kennedy International', iata: 'JFK', city: 'New York', scheduled: '17:00', actual: 'En approche' }
+      },
+      'LH456': {
+        flightNumber: 'LH456',
+        airline: 'Lufthansa',
+        status: 'landed',
+        statusText: 'Atterri',
+        statusIcon: '🛬',
+        statusClass: 'bg-green-100 text-green-700',
+        departure: { airport: 'Frankfurt Airport', iata: 'FRA', city: 'Francfort', scheduled: '08:00', actual: '08:05' },
+        arrival: { airport: 'Aéroport de Barcelone', iata: 'BCN', city: 'Barcelone', scheduled: '10:30', actual: '10:22' }
+      },
+      'BA789': {
+        flightNumber: 'BA789',
+        airline: 'British Airways',
+        status: 'delayed',
+        statusText: 'Retardé',
+        statusIcon: '⏳',
+        statusClass: 'bg-amber-100 text-amber-700',
+        departure: { airport: 'London Heathrow', iata: 'LHR', city: 'Londres', scheduled: '16:00', actual: '17:15 (+1h15)' },
+        arrival: { airport: 'Aéroport de Dubaï', iata: 'DXB', city: 'Dubaï', scheduled: '01:30', actual: '02:40' }
+      },
+      'EK999': {
+        flightNumber: 'EK999',
+        airline: 'Emirates',
+        status: 'cancelled',
+        statusText: 'Annulé',
+        statusIcon: '❌',
+        statusClass: 'bg-red-100 text-red-700',
+        departure: { airport: 'Aéroport de Dubaï', iata: 'DXB', city: 'Dubaï', scheduled: '22:00', actual: 'Annulé' },
+        arrival: { airport: 'Aéroport de Tokyo-Narita', iata: 'NRT', city: 'Tokyo', scheduled: '13:00', actual: 'Annulé' }
+      },
+      'VY321': {
+        flightNumber: 'VY321',
+        airline: 'Vueling',
+        status: 'scheduled',
+        statusText: 'Programmé',
+        statusIcon: '🕐',
+        statusClass: 'bg-gray-100 text-gray-700',
+        departure: { airport: 'Aéroport de Barcelone', iata: 'BCN', city: 'Barcelone', scheduled: '06:15', actual: 'À l’heure' },
+        arrival: { airport: 'Aéroport de Paris-Orly', iata: 'ORY', city: 'Paris', scheduled: '08:30', actual: 'Prévu' }
+      }
+    };
+
+    const searchForm = document.getElementById('searchForm');
+    const flightInput = document.getElementById('flightInput');
+    const initialState = document.getElementById('initialState');
+    const loadingState = document.getElementById('loadingState');
+    const errorState = document.getElementById('errorState');
+    const errorMessage = document.getElementById('errorMessage');
+    const flightCard = document.getElementById('flightCard');
+
+    function searchFlight(query) {
+      const code = query.trim().toUpperCase();
+      if (!code) return;
+
+      flightInput.value = code;
+
+      // Masquer les blocs
+      initialState.classList.add('hidden');
+      errorState.classList.add('hidden');
+      flightCard.classList.add('hidden');
+      loadingState.classList.remove('hidden');
+      loadingState.classList.add('flex');
+
+      // Simulation du délai de chargement réseau
+      setTimeout(() => {
+        loadingState.classList.add('hidden');
+        loadingState.classList.remove('flex');
+
+        const flight = mockFlights[code];
+        if (flight) {
+          // Remplir les données
+          document.getElementById('cardAirline').textContent = flight.airline;
+          document.getElementById('cardFlightNumber').textContent = `Vol ${flight.flightNumber}`;
+          
+          const badge = document.getElementById('cardStatusBadge');
+          badge.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${flight.statusClass}`;
+          badge.innerHTML = `<span>${flight.statusIcon}</span> ${flight.statusText}`;
+
+          document.getElementById('cardDepIata').textContent = flight.departure.iata;
+          document.getElementById('cardDepCity').textContent = flight.departure.city;
+          document.getElementById('cardDepScheduled').textContent = flight.departure.scheduled;
+          document.getElementById('cardDepActual').textContent = flight.departure.actual;
+          document.getElementById('cardDepAirport').textContent = flight.departure.airport;
+
+          document.getElementById('cardArrIata').textContent = flight.arrival.iata;
+          document.getElementById('cardArrCity').textContent = flight.arrival.city;
+          document.getElementById('cardArrScheduled').textContent = flight.arrival.scheduled;
+          document.getElementById('cardArrActual').textContent = flight.arrival.actual;
+          document.getElementById('cardArrAirport').textContent = flight.arrival.airport;
+
+          flightCard.classList.remove('hidden');
+        } else {
+          errorMessage.textContent = `Vol "${code}" introuvable.`;
+          errorState.classList.remove('hidden');
+        }
+      }, 500);
+    }
+
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      searchFlight(flightInput.value);
+    });
+
+    document.querySelectorAll('.quick-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        searchFlight(btn.getAttribute('data-code'));
+      });
+    });
+  </script>
+</body>
+</html>
